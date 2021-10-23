@@ -35,12 +35,6 @@ class Automation:
                 return time.localtime()[6]
             case 'yearday':
                 return time.localtime()[7] """
-        
-    
-    # current_year, current_month, current_day, utc_time_hour, current_minute, current_second, _, _ = time.localtime()
-    # current_hour = utc_time_hour + timezone_relative_to_utc
-
-    # epoch_time_in_seconds = time.mktime(time.localtime())
 
     
     
