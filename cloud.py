@@ -5,8 +5,6 @@ import urequests
 
 class Iot:
 
-    put_connection = 0
-
     def __init__(self, data_name, cloud = config.CLOUD_SERVER):
         self.server = cloud
         self.data_name = data_name
