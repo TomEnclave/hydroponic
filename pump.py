@@ -22,4 +22,3 @@ class Pump(timer.Automation):
             self.device.off()
             log.send({"hour": self.current_hour, "minute": self.current_minute, "status": "OFF"})
             await uasyncio.sleep(seconds_to_rest)
-
