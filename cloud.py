@@ -13,8 +13,8 @@ class Iot:
     def send(self, data):
         while self.put_connection_status == "openned":
             uasyncio.sleep_ms(100)
+        self.put_connection_status = "openned"
         parsed_data = ujson.dumps(data)
         put_connection = urequests.post(self.server + self.data_name + ".json", data=parsed_data)
-        self.put_connection_status = "openned"
         put_connection.close()
         self.put_connection_status = "closed"
