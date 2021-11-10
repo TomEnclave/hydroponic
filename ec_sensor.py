@@ -38,15 +38,22 @@ class Ec(temperature.Temp):
 
         self.ec_ground.value(0)
 
-    def measure_ec(self):
+    async def measure_ec(self):
+
+        self.ec_ground.on()
+        self.ec_ground.off()
+        await uasyncio.sleep(0.01)
 
         self.ec_power.on()
-        
+
+        await uasyncio.sleep(0.01)
         raw_reading = self.ec_pin.read()
-        print("raw_reading 1:")
-        print(raw_reading)
 
         self.ec_power.off()
+
+        print("--------read every 5 sec--------")
+        print("ADC raw read (0 - 1024) (0 - 3.3v):")
+        print(raw_reading)
 
         measured_temperature = self.measure_temperature()
 
@@ -57,9 +64,13 @@ class Ec(temperature.Temp):
         ec25 = ec / ( 1 + self.temperature_coeficient * (measured_temperature - 25.0))
         ppm = ec25 * (self.ppm_conversion * 1000)
 
+        print("measured_temperature:")
         print(measured_temperature)
+        print("ppm:")
         print(ppm)
+        print("ec adjusted for temperature:")
         print(ec25)
+        print("ec NOT adjusted for temperature:")
         print(ec)
 
         return measured_temperature, ppm, ec25, ec
@@ -70,6 +81,6 @@ class Ec(temperature.Temp):
 
         while True:
             self.update_time()
-            measured_temperature, ppm, ec25, ec = self.measure_ec()
+            measured_temperature, ppm, ec25, ec = await self.measure_ec()
             log.send({"hour": self.current_hour, "minute": self.current_minute, "temperature": measured_temperature, "ppm": ppm, "ec": ec25, "ec_uncompensated": ec})
             await uasyncio.sleep(update_interval)
