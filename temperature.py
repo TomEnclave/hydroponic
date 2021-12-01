@@ -43,7 +43,7 @@ class Temp(timer.Automation):
         resistance = resistor / (self.bit_width/self.thermistor.read() - 1)
         return resistance
     
-    def measure_temperature(self, nominal_temp = 23, resistance_at_nominal_temp = 8300, beta_from_3000_to_4000 = 3950):
+    def measure_temperature(self, nominal_temp = 25, resistance_at_nominal_temp = 8100, beta_from_3000_to_4000 = 3950):
         import math
         steinhart = math.log(self.get_resistance() / resistance_at_nominal_temp) / beta_from_3000_to_4000
         steinhart += 1.0 / (nominal_temp + 273.15)
