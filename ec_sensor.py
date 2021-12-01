@@ -6,7 +6,7 @@ class Ec(temperature.Temp):
       
     import machine
 
-    calibration_ec = 1.38 # EC value of Calibration solution is s/cm
+    calibration_ec = 1.38 # Used only for calibration, EC value of Calibration solution in siemens/cm
 
     resistor = 1000 # R1
     pin_resistance = 25 # Ra - Pin resistance of ESP32 (compared to 25 in arduino), according to page 43 of esp32_datasheet_en.pdf
@@ -18,9 +18,9 @@ class Ec(temperature.Temp):
 
     ppm_conversion = 0.64 # USA = 0.5 / EU = 0.64 / Australia = 0.7
 
-    K = 2.88 # K - Cell Constant - 2.88 for US plugs / 1.76 for EU plugs [Gotten from calibration procedure]
+    K = 0.96 #  K - Cell Constant. Value which needs to be calibrated to show precise EC value. Normally :- 2.88 for US plugs / 1.76 for EU plugs
     
-    def __init__(self, thermistor = machine.ADC(machine.Pin(36)), ec_pin = machine.ADC(machine.Pin(35)), ec_ground = machine.Pin(19, machine.Pin.OUT), ec_power = machine.Pin(33, machine.Pin.OUT), ec_resistor = resistor, pin_resistance = pin_resistance, pin_voltage = pin_voltage, calibration_ec = calibration_ec, temperature_coeficient = temperature_coeficient, ppm_conversion = ppm_conversion, cell_constant = K):
+    def __init__(self, thermistor = machine.ADC(machine.Pin(36)), ec_pin = machine.ADC(machine.Pin(35)), ec_ground = machine.Pin(19, machine.Pin.OUT), ec_power = machine.Pin(26, machine.Pin.OUT), ec_resistor = resistor, pin_resistance = pin_resistance, pin_voltage = pin_voltage, calibration_ec = calibration_ec, temperature_coeficient = temperature_coeficient, ppm_conversion = ppm_conversion, cell_constant = K):
         #import machine
         super().__init__()
         self.thermistor = thermistor
@@ -37,19 +37,35 @@ class Ec(temperature.Temp):
         self.cell_constant = cell_constant
 
         self.ec_ground.value(0)
+    
+    #Below are micropython viper functions, accessing gpio's through register, to bypass speed limitations of micropython
+    #GPIO's are hardcoded for now, ec_power set to GPIO 26
+    @micropython.viper
+    def quick_gpio_set(self, value:int, mask:int):
+        GPIO_OUT = ptr32(0x3FF44004) # Esp32 GPIO 0-31 Set register
+        GPIO_OUT[0] = (GPIO_OUT[0] & mask) | value
+
+    @micropython.viper
+    def quick_gpio_clear(self, value:int, mask:int):
+        GPIO_OUT = ptr32(0x3FF4400C) # Esp32 GPIO 0-31 Clear register
+        GPIO_OUT[0] = (GPIO_OUT[0] & mask) | value
+    
+    @micropython.viper
+    def quick_measure(self):
+        self.quick_gpio_set(0b00000100000000000000000000000000,
+         0b11111111111111111111111111111111)
+
+        raw_reading = self.ec_pin.read()
+        raw_reading = self.ec_pin.read()
+
+        self.quick_gpio_clear(0b00000100000000000000000000000000,
+         0b11111111111111111111111111111111)
+
+        return raw_reading
 
     async def measure_ec(self):
 
-        self.ec_ground.on()
-        self.ec_ground.off()
-        await uasyncio.sleep(0.01)
-
-        self.ec_power.on()
-
-        await uasyncio.sleep(0.01)
-        raw_reading = self.ec_pin.read()
-
-        self.ec_power.off()
+        raw_reading = self.quick_measure()
 
         print("--------read every 5 sec--------")
         print("ADC raw read (0 - 1024) (0 - 3.3v):")
