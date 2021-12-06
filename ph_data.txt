@@ -1,0 +1,2 @@
+neutral_voltage=1.722168
+acid_voltage=0.7202148
