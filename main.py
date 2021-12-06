@@ -1,40 +1,36 @@
 import uasyncio
+import config_main
 from machine import Pin, ADC
 from time import localtime
 from pump import Pump
 from leds import Leds
 from temperature import Temp
 from ec_sensor import Ec
+from ph_sensor import Ph
 
-pump_pin = 18
-leds_pin = 19
-temperature_pin = 36
+pump_program = Pump(Pin(config_main.pump_pin, Pin.OUT))
+leds_program = Leds(Pin(config_main.leds_pin, Pin.OUT))
 
-pump_minutes_to_work = 3
-pump_minutes_to_rest = 1
+#temperature_sensor = Temp(ADC(Pin(config_main.temperature_pin)))
+ec_sensor= Ec()
+ph_sensor = Ph(calibrating = config_main.ph_calibration)
 
-leds_turn_on_from = 0
-leds_turn_off_from = 20
-
-temperature_update_interval_sec = 3
-ppm_update_interval_sec = 5
-
-pump_program = Pump(Pin(pump_pin, Pin.OUT))
-leds_program = Leds(Pin(leds_pin, Pin.OUT))
-temperature = Temp(ADC(Pin(temperature_pin)))
-ppm = Ec()
-ppm.calibrate_adc()
-temperature.calibrate_adc()
-#print(temperature.attenuation)
-#print(temperature.width)
-#print(temperature.measure())
-
-
-event_loop = uasyncio.get_event_loop()
-
-event_loop.create_task((pump_program.start(pump_minutes_to_work, pump_minutes_to_rest)))
-event_loop.create_task((leds_program.start(leds_turn_on_from, leds_turn_off_from)))
-event_loop.create_task((temperature.start_log(temperature_update_interval_sec)))
-event_loop.create_task((ppm.start_log(ppm_update_interval_sec)))
-
-event_loop.run_forever()
+async_loop = uasyncio.get_event_loop()
+async_loop.create_task((
+                        pump_program.start(
+                            config_main.pump_minutes_to_work, 
+                            config_main.pump_minutes_to_rest)))
+async_loop.create_task((
+                        leds_program.start(
+                            config_main.leds_turn_on_from, 
+                            config_main.leds_turn_off_from)))
+async_loop.create_task((
+                        ec_sensor.start_log(
+                            config_main.ppm_update_interval_sec)))
+async_loop.create_task((
+                        ph_sensor.start_log(
+                            config_main.ph_update_interval_sec)))
+# async_loop.create_task((
+#                         temperature_sensor.start_log(
+#                             config_main.temperature_update_interval_sec)))
+async_loop.run_forever()

@@ -1,3 +1,4 @@
 config.py
 .micropythonrc
 test.py
+reset.py
