@@ -15,4 +15,4 @@ temperature_coeficient = 0.019 #this changes depending on what chemical we are m
 
 ppm_conversion = 0.64 # USA = 0.5 / EU = 0.64 / Australia = 0.7
 
-K = 0.96 #  K - Cell Constant. Value which needs to be calibrated to show precise EC value. Normally :- 2.88 for US plugs / 1.76 for EU plugs
+K = 0.185 #  K - Cell Constant. Value which needs to be calibrated to show precise EC value. Normally :- 2.88 for US plugs / 1.76 for EU plugs
