@@ -1,27 +1,23 @@
 import temperature
 import uasyncio
 import cloud
+import config_ec
 
 class Ec(temperature.Temp):
       
     import machine
-
-    calibration_ec = 1.38 # Used only for calibration, EC value of Calibration solution in siemens/cm
-
-    resistor = 1000 # R1
-    pin_resistance = 25 # Ra - Pin resistance of ESP32 (compared to 25 in arduino), according to page 43 of esp32_datasheet_en.pdf
-    pin_voltage = 3.3 # Esp32 pin voltage is 3.3v / 5v on Arduino UNO
-
-    #The value below will change depending on what chemical solution we are measuring
-    #0.019 is generaly considered the standard for plant nutrients [google "Temperature compensation EC" for more info
-    temperature_coeficient = 0.019 #this changes depending on what chemical we are measuring
-
-    ppm_conversion = 0.64 # USA = 0.5 / EU = 0.64 / Australia = 0.7
-
-    K = 0.96 #  K - Cell Constant. Value which needs to be calibrated to show precise EC value. Normally :- 2.88 for US plugs / 1.76 for EU plugs
     
-    def __init__(self, thermistor = machine.ADC(machine.Pin(36)), ec_pin = machine.ADC(machine.Pin(35)), ec_ground = machine.Pin(19, machine.Pin.OUT), ec_power = machine.Pin(26, machine.Pin.OUT), ec_resistor = resistor, pin_resistance = pin_resistance, pin_voltage = pin_voltage, calibration_ec = calibration_ec, temperature_coeficient = temperature_coeficient, ppm_conversion = ppm_conversion, cell_constant = K):
-        #import machine
+    def __init__(self, thermistor = machine.ADC(machine.Pin(config_ec.pin_thermistor)), 
+                    ec_pin = machine.ADC(machine.Pin(config_ec.pin_ec_read)), 
+                    ec_ground = machine.Pin(config_ec.pin_ec_ground, machine.Pin.OUT), 
+                    ec_power = machine.Pin(config_ec.pin_ec_power, machine.Pin.OUT), 
+                    ec_resistor = config_ec.resistor, 
+                    pin_resistance = config_ec.pin_resistance, 
+                    pin_voltage = config_ec.pin_voltage, 
+                    calibration_ec = config_ec.calibration_ec, 
+                    temperature_coeficient = config_ec.temperature_coeficient, 
+                    ppm_conversion = config_ec.ppm_conversion, 
+                    cell_constant = config_ec.K):
         super().__init__()
         self.thermistor = thermistor
         self.ec_pin = ec_pin
@@ -35,8 +31,6 @@ class Ec(temperature.Temp):
         self.temperature_coeficient = temperature_coeficient
         self.ppm_conversion = ppm_conversion
         self.cell_constant = cell_constant
-
-        self.ec_ground.value(0)
     
     #Below are micropython viper functions, accessing gpio's through register, to bypass speed limitations of micropython
     #GPIO's are hardcoded for now, ec_power set to GPIO 26
@@ -95,7 +89,10 @@ class Ec(temperature.Temp):
 
         log = cloud.Iot("ppm")
 
+        import machine
+
         while True:
+            self.calibrate_adc(attenuation = machine.ADC.ATTN_11DB, bit_width = machine.ADC.WIDTH_10BIT)
             self.update_time()
             measured_temperature, ppm, ec25, ec = await self.measure_ec()
             log.send({"hour": self.current_hour, "minute": self.current_minute, "temperature": measured_temperature, "ppm": ppm, "ec": ec25, "ec_uncompensated": ec})
