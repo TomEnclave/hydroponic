@@ -53,7 +53,7 @@ class Ppfd(timer.Automation):
 
     async def start_log(self, update_interval=60):
 
-        log = cloud.Iot("ph")
+        log = cloud.Iot("ppfd")
 
         while True:
             self.update_time()
