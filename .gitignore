@@ -2,3 +2,4 @@ config.py
 .micropythonrc
 test.py
 reset.py
+.vscode/settings.json
