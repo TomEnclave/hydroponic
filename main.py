@@ -1,19 +1,18 @@
 import uasyncio
 import config_main
-from machine import Pin, ADC
-from time import localtime
+from machine import Pin
 from pump import Pump
 from leds import Leds
-from temperature import Temp
 from ec_sensor import Ec
 from ph_sensor import Ph
+from light_sensor import Ppfd
 
 pump_program = Pump(Pin(config_main.pump_pin, Pin.OUT))
 leds_program = Leds(Pin(config_main.leds_pin, Pin.OUT))
 
-#temperature_sensor = Temp(ADC(Pin(config_main.temperature_pin)))
 ec_sensor= Ec()
 ph_sensor = Ph(calibrating = config_main.ph_calibration)
+ppfd_sensor = Ppfd()
 
 async_loop = uasyncio.get_event_loop()
 async_loop.create_task((
@@ -30,7 +29,8 @@ async_loop.create_task((
 async_loop.create_task((
                         ph_sensor.start_log(
                             config_main.ph_update_interval_sec)))
-# async_loop.create_task((
-#                         temperature_sensor.start_log(
-#                             config_main.temperature_update_interval_sec)))
+async_loop.create_task((
+                        ppfd_sensor.start_log(
+                            config_main.ppfd_update_interval_sec)))
 async_loop.run_forever()
+

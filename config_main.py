@@ -13,3 +13,4 @@ leds_turn_off_from = 20
 temperature_update_interval_sec = 3
 ppm_update_interval_sec = 5
 ph_update_interval_sec = 5
+ppfd_update_interval_sec = 2
