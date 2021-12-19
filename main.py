@@ -13,6 +13,7 @@ leds_program = Leds(Pin(config_main.leds_pin, Pin.OUT))
 ec_sensor= Ec()
 ph_sensor = Ph(calibrating = config_main.ph_calibration)
 ppfd_sensor = Ppfd()
+water_sensor = Waterlevel()
 
 async_loop = uasyncio.get_event_loop()
 async_loop.create_task((
@@ -32,5 +33,8 @@ async_loop.create_task((
 async_loop.create_task((
                         ppfd_sensor.start_log(
                             config_main.ppfd_update_interval_sec)))
+async_loop.create_task((
+                        water_sensor.start_log(
+                            1)))
 async_loop.run_forever()
 
