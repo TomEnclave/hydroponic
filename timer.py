@@ -14,7 +14,7 @@ class Automation:
     def update_time(self):
         self.current_year, self.current_month, self.current_day, self.utc_time_hour, self.current_minute, self.current_second, _, _ = time.localtime()
         self.current_hour = self.utc_time_hour + self.timezone_relative_to_utc
-        self.epoch_time_in_seconds = time.mktime(time.localtime())
+        #self.epoch_time_in_seconds = time.mktime(time.localtime())
     
     """ #match doesn't work in micropython?
     def current(unit):
