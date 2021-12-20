@@ -6,6 +6,8 @@ from leds import Leds
 from ec_sensor import Ec
 from ph_sensor import Ph
 from light_sensor import Ppfd
+from water_sensor import Waterlevel
+from dht11 import Dht11
 
 pump_program = Pump(Pin(config_main.pump_pin, Pin.OUT))
 leds_program = Leds(Pin(config_main.leds_pin, Pin.OUT))
@@ -14,6 +16,7 @@ ec_sensor= Ec()
 ph_sensor = Ph(calibrating = config_main.ph_calibration)
 ppfd_sensor = Ppfd()
 water_sensor = Waterlevel()
+room_sensor = Dht11()
 
 async_loop = uasyncio.get_event_loop()
 async_loop.create_task((
@@ -35,6 +38,9 @@ async_loop.create_task((
                             config_main.ppfd_update_interval_sec)))
 async_loop.create_task((
                         water_sensor.start_log(
+                            1)))
+async_loop.create_task((
+                        room_sensor.start_log(
                             1)))
 async_loop.run_forever()
 
