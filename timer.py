@@ -4,6 +4,9 @@ class Automation:
     
     from machine import Pin
     import ntptime
+
+    print("---the time---")
+    print(time.localtime())
     
     ntptime.settime()
     
