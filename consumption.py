@@ -1,6 +1,8 @@
 import timer
 import uasyncio
 import cloud
+from debug import log
+debug = True
 
 class Consumption(timer.Automation):
       
@@ -68,7 +70,10 @@ class Consumption(timer.Automation):
         device_current = load_voltage / self.amp_rate
         device_consumption = device_current * self.measured_device_voltage
 
-        print("ADC read value: {0} | Total Voltage: {1} | Load Voltage: {2} | Device Current: {3} | Consumption: {4}".format(read_value, total_voltage, load_voltage, device_current, device_consumption))
+        log("------------------Power Consumption-------------------", debug)
+        log("ADC read value: {0} | Total Voltage: {1} | Load Voltage: {2}".format(read_value, total_voltage, load_voltage), debug)
+        log("Device Current: {0} | Consumption: {1}".format(device_current, device_consumption), debug)
+        log("------------------------------------------------------", debug)
         
         return device_consumption
         

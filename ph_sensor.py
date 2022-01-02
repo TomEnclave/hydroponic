@@ -2,6 +2,8 @@ from time import time
 import temperature
 import uasyncio
 import cloud
+from debug import log
+debug = True
 
 class Ph(temperature.Temp):
     
@@ -18,18 +20,14 @@ class Ph(temperature.Temp):
         try:
             with open('ph_data.txt','r') as f:
                 neutral_voltage_line = f.readline()
-                print("-----begin-----")
-                print(neutral_voltage_line)
                 neutral_voltage_line = neutral_voltage_line.strip('neutral_voltage=')
-                print(neutral_voltage_line)
                 _neutral_voltage    = float(neutral_voltage_line)
-                print(_neutral_voltage)
                 acid_voltage_line    = f.readline()
-                print(acid_voltage_line)
                 acid_voltage_line    = acid_voltage_line.strip('acid_voltage=')
-                print(acid_voltage_line)
                 _acid_voltage       = float(acid_voltage_line)
-                print(_acid_voltage)
+                log("------------------PH Sensor Settings-------------------", debug)
+                log("Neutral Voltage: {0} | Acid Voltage: {1}".format(_neutral_voltage, _acid_voltage), debug)
+                log("-------------------------------------------------------", debug)
         except :
             print("ph_data.txt error, resetting to default values..")
             self.reset()
@@ -120,13 +118,15 @@ class Ph(temperature.Temp):
 
         slope     = (7.0-4.0)/((_neutral_voltage-1.5)/3.0 - (_acid_voltage-1.5)/3.0)
         intercept = 7.0 - slope*(_neutral_voltage-1.5)/3.0
-        _phValue  = slope*(voltage-1.5)/3.0+intercept
+        _ph_value  = slope*(voltage-1.5)/3.0+intercept
 
-        round(_phValue,2)
+        round(_ph_value,2)
 
-        print("PH value")
-        print(_phValue)
-        return _phValue
+        log("------------------PH Sensor-------------------", debug)
+        log("PH Value: {0} | Adjusted for temperature: {1}".format(_ph_value, temperature), debug)
+        log("----------------------------------------------", debug)
+
+        return _ph_value
 
     def reset(self):
         _acid_voltage    = 0.5

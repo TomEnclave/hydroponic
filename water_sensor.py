@@ -1,6 +1,8 @@
 import timer
 import uasyncio
 import cloud
+from debug import log
+debug = True
 
 class Waterlevel(timer.Automation):
       
@@ -44,12 +46,11 @@ class Waterlevel(timer.Automation):
         read_value = 1 if read_value is 0 else read_value
         percentage = 100 / (self.bit_width / read_value)
         voltage = read_value/self.bit_width * self.attenuation
-        print("read_value")
-        print(read_value)
-        print("percentage")
-        print(percentage)
-        print("voltage")
-        print(voltage)
+
+        log("---------------------Water Sensor---------------------", debug)
+        log("ADC read value: {0} | Percentage: {1} | Voltage: {2}".format(read_value, percentage, voltage), debug)
+        log("------------------------------------------------------", debug)
+
         return percentage
         
     async def start_log(self, update_interval=60):

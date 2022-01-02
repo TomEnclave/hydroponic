@@ -2,6 +2,8 @@ import temperature
 import uasyncio
 import cloud
 import config_ec
+from debug import log
+debug = True
 
 class Ec(temperature.Temp):
       
@@ -61,9 +63,8 @@ class Ec(temperature.Temp):
 
         raw_reading = self.quick_measure()
 
-        print("--------read every 5 sec--------")
-        print("ADC raw read (0 - 1024) (0 - 3.3v):")
-        print(raw_reading)
+        log("-----------------EC Sensor-----------------", debug)
+        log("ADC raw read: {0} | Max ADC (bit width): {1} | Attenuation: {2}".format(raw_reading, self.bit_width, self.attenuation), debug)
 
         measured_temperature = self.measure_temperature()
 
@@ -73,15 +74,9 @@ class Ec(temperature.Temp):
         ec = 1000 / (resistance * self.cell_constant)
         ec25 = ec / ( 1 + self.temperature_coeficient * (measured_temperature - 25.0))
         ppm = ec25 * (self.ppm_conversion * 1000)
-
-        print("measured_temperature:")
-        print(measured_temperature)
-        print("ppm:")
-        print(ppm)
-        print("ec adjusted for temperature:")
-        print(ec25)
-        print("ec NOT adjusted for temperature:")
-        print(ec)
+        
+        log("measured_temperature: {0} | ppm: {1} | ec adjusted for temperature: {2} | NOT adjusted: {3}".format(measured_temperature, ppm, ec25, ec), debug)
+        log("-------------------------------------------", debug)
 
         return measured_temperature, ppm, ec25, ec
 
