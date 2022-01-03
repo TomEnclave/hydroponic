@@ -1,7 +1,7 @@
 ph_calibration = False
 
-pump_pin = 18
-leds_pin = 19
+pump_pin = 13
+leds_pin = 14
 temperature_pin = 36
 
 pump_minutes_to_work = 3
