@@ -1,6 +1,8 @@
-import timer
 import uasyncio
+import timer
 import cloud
+import db
+import screen
 from debug import log
 debug = True
 
@@ -9,7 +11,7 @@ class Spectrum(timer.Automation):
     def __init__(self, scl_pin = 17, sda_pin = 16, tcs34725_address = 0x29):
         import machine
         super().__init__()
-        self.i2c = machine.SoftI2C(scl = machine.Pin(scl_pin),sda = machine.Pin(sda_pin))
+        self.i2c = machine.I2C(scl = machine.Pin(scl_pin),sda = machine.Pin(sda_pin))
         self.tcs34725_address = tcs34725_address
         self.command_bit = 0b10000000 #Must be added to ANY command, read or write
         self.active_pon_bit = 0b00000001
@@ -20,20 +22,33 @@ class Spectrum(timer.Automation):
         self.red_register = 0x16
         self.green_register = 0x18
         self.blue_register = 0x1a
-        self.enable_bit = self.i2c.readfrom_mem(tcs34725_address, self.command_bit | self.active_register, 1)[0]
-        self.ready = bool(bin(self.i2c.readfrom_mem(tcs34725_address, self.command_bit | self.status_register, 1)[0] & 0b00000001)) # Checks if last bit is set to 1
+        
         self.sensor_id = hex(self.i2c.readfrom_mem(self.tcs34725_address, self.command_bit | 0x12, 1)[0])
+        self.valid_id = "VALID" if self.sensor_id is 0x44 or 0x4d or 0x10 else "INVALID"
+        
+        log("------------TCS34725 Sensor Init------------", debug)
+        log("Spectrum Sensor ID: {0}".format(self.sensor_id), debug)
+        log("Sensor ID is {0} / Correct ID's are: 0x44 or 0x4d or 0x10".format(self.valid_id), debug)
+        log("--------------------------------------------", debug)
+        
+        self.ready = bool(bin(self.i2c.readfrom_mem(self.tcs34725_address, self.command_bit | self.status_register, 1)[0] & 0b00000001)) # Checks if last bit is set to 1
 
+        self.enable_bit = self.i2c.readfrom_mem(self.tcs34725_address, self.command_bit | self.active_register, 1)[0]
+        
+        self.enable()
+
+    async def enable(self):
+        print("enabled")
         self.i2c.writeto_mem(self.tcs34725_address, self.active_register, 
                                 bytes([self.command_bit | self.enable_bit | self.active_pon_bit])) #Starts the sensor
-        uasyncio.sleep_ms(3)
+        uasyncio.sleep_ms(3 + 100)
         self.i2c.writeto_mem(self.tcs34725_address, self.active_register, 
                                 bytes([self.command_bit | self.enable_bit | self.active_pon_bit | self.active_aen_bit]))
-        
-        log("Spectrum Sensor ID: {0}".format(self.sensor_id), debug)
-    
+
     async def measure(self):
+        
         while not self.ready:
+            self.ready = bool(bin(self.i2c.readfrom_mem(self.tcs34725_address, self.command_bit | self.status_register, 1)[0] & 0b00000001))
             uasyncio.sleep_ms(24)
 
         raw_clear_sum = int.from_bytes(self.i2c.readfrom_mem(self.tcs34725_address, self.command_bit | self.clear_sum_register, 2), "little")
@@ -41,11 +56,11 @@ class Spectrum(timer.Automation):
         raw_green = int.from_bytes(self.i2c.readfrom_mem(self.tcs34725_address, self.command_bit | self.green_register, 2), "little")
         raw_blue = int.from_bytes(self.i2c.readfrom_mem(self.tcs34725_address, self.command_bit | self.blue_register, 2), "little")
         
-        #if raw_clear_sum <= 0: # eliminating division by 0
-        #    raw_clear_sum = 1
-        #    raw_red = 1
-        #    raw_green = 1
-        #    raw_blue = 1
+        if raw_clear_sum <= 0: # eliminating division by 0
+            raw_clear_sum = 1
+            raw_red = 1
+            raw_green = 1
+            raw_blue = 1
 
         rgb_red = raw_red / raw_clear_sum * 255
         rgb_green = raw_green / raw_clear_sum * 255 
@@ -112,6 +127,12 @@ class Ppfd(timer.Automation):
             other_spectrum = 38.9265536723164
         else: # day light
             other_spectrum = 43.4782608695652
+
+        spectrum = 11.2700369913687 if spectrum is "red-blue" else other_spectrum
+        lux = (sensor_data[0]<<8 | sensor_data[1]) / 1.2
+        ppfd = (lux / spectrum * 100) / 100 #umol/s/m2
+        preset_ppfd = (lux / 11.2700369913687 * 100) / 100 #umol/s/m2
+
         """ 
         Spectrum factors:
             43.4782608695652 for Daylight
@@ -129,18 +150,20 @@ class Ppfd(timer.Automation):
             11.2700369913687 for Red + Blue LED 450+650 nm
             38.9265536723164 for Red + Blue + White LED 450+650nm+3500K
         """
-        spectrum = 11.2700369913687 if spectrum is "red-blue" else other_spectrum
-        lux = (sensor_data[0]<<8 | sensor_data[1]) / 1.2
-        ppfd = (lux / spectrum * 100) / 100 #umol/s/m2
+
         log("-----------------BH1750 Sensor-----------------", debug)
-        log("Lux: {0} | PPFD: {1}".format(lux, ppfd), debug)
+        log("Lux: {0} | PPFD: {1} | Spectrum coefficient: {2} | Red-Blue Preset PPFD: {3}".format(lux, ppfd, spectrum_coefficient, preset_ppfd), debug)
         log("-----------------------------------------------", debug)
 
         return ppfd, lux
 
     async def start_log(self, update_interval=60):
 
-        log = cloud.Iot("ppfd")
+        id = 'light'
+
+        log = cloud.Iot(id)
+        local = db.Database(id)
+        display = screen.Display(id)
         spectrums = Spectrum(scl_pin=self.scl_pin, sda_pin=self.sda_pin)
 
         while True:
@@ -148,5 +171,28 @@ class Ppfd(timer.Automation):
             hi_res = await self.get_hi_res_value()
             ppfd, lux = await self.measure_ppfd(hi_res, spectrum = rgb)
             self.update_time()
-            log.send({"hour": self.current_hour, "minute": self.current_minute, "ppfd": ppfd, "rgb": rgb, "raw rgb": raw, "lux bh1750": lux,"lux tcs34725": tcs_lux, "color temperature": color_temperature, "cct": cct})
+            
+            data = {    "year": self.current_year, 
+                        "month": self.current_month, 
+                        "day": self.current_day, 
+                        "hour": self.current_hour, 
+                        "minute": self.current_minute, 
+                        "ppfd": ppfd, 
+                        "rgb": rgb, 
+                        "raw rgb": raw, 
+                        "lux bh1750": lux,
+                        "lux tcs34725": tcs_lux, 
+                        "color temperature": color_temperature, 
+                        "cct": cct}
+
+            try:
+                log.send(data)
+                amount_to_keep_locally = 5
+            except:
+                amount_to_keep_locally = 10
+
+            local.save_data(data, amount_to_keep_locally)
+
+            display.refresh()
+
             await uasyncio.sleep(update_interval)

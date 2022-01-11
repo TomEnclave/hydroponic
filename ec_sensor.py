@@ -1,13 +1,14 @@
-import temperature
+import machine
 import uasyncio
 import cloud
+import temperature
+import db
+import screen
 import config_ec
 from debug import log
 debug = True
 
 class Ec(temperature.Temp):
-      
-    import machine
     
     def __init__(self, thermistor = machine.ADC(machine.Pin(config_ec.pin_thermistor)), 
                     ec_pin = machine.ADC(machine.Pin(config_ec.pin_ec_read)), 
@@ -82,13 +83,35 @@ class Ec(temperature.Temp):
 
     async def start_log(self, update_interval=60):
 
-        log = cloud.Iot("ppm")
+        id = 'ec'
 
-        import machine
+        log = cloud.Iot(id)
+        local = db.Database(id)
+        display = screen.Display(id)
 
         while True:
             self.calibrate_adc(attenuation = machine.ADC.ATTN_11DB, bit_width = machine.ADC.WIDTH_10BIT)
             self.update_time()
             measured_temperature, ppm, ec25, ec = await self.measure_ec()
-            log.send({"hour": self.current_hour, "minute": self.current_minute, "temperature": measured_temperature, "ppm": ppm, "ec": ec25, "ec_uncompensated": ec})
+
+            data = {"year": self.current_year, 
+                    "month": self.current_month, 
+                    "day": self.current_day, 
+                    "hour": self.current_hour, 
+                    "minute": self.current_minute, 
+                    "temperature": measured_temperature, 
+                    "ppm": ppm, 
+                    "ec": ec25, 
+                    "ec_uncompensated": ec}
+
+            try:
+                log.send(data)
+                amount_to_keep_locally = 5
+            except:
+                amount_to_keep_locally = 10
+
+            local.save_data(data, amount_to_keep_locally)
+
+            display.refresh()
+
             await uasyncio.sleep(update_interval)

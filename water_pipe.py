@@ -1,21 +1,22 @@
-import timer
+import machine
 import uasyncio
+import timer
 import cloud
+import db
+import screen
 from debug import log
 debug = True
 
-class Waterlevel(timer.Automation):
-      
-    import machine
+class WaterPipe(timer.Automation):
     
     def __init__(self, water_level_pin = machine.ADC(machine.Pin(39))):
         super().__init__()
         self.water_level = water_level_pin
-        #self.device = 0
 
     def calibrate_adc(self, attenuation = machine.ADC.ATTN_2_5DB, bit_width = machine.ADC.WIDTH_12BIT):
         self.water_level.atten(attenuation)
         self.water_level.width(bit_width)
+
         #ADC.ATTN_0DB: 0dB attenuation, gives a maximum input voltage of 1.00v - this is the default configuration
         #ADC.ATTN_2_5DB: 2.5dB attenuation, gives a maximum input voltage of approximately 1.34v
         #ADC.ATTN_6DB: 6dB attenuation, gives a maximum input voltage of approximately 2.00v
@@ -28,6 +29,7 @@ class Waterlevel(timer.Automation):
             self.attenuation = 2.00
         if attenuation == 3:
             self.attenuation = 3.6
+
         #ADC.WIDTH_9BIT: 512 values
         #ADC.WIDTH_10BIT: 1024
         #ADC.WIDTH_11BIT: 2048
@@ -54,12 +56,32 @@ class Waterlevel(timer.Automation):
         return percentage
         
     async def start_log(self, update_interval=60):
-        import machine
+        
+        id = 'water_pipe'
 
-        log = cloud.Iot("water_level")
+        log = cloud.Iot(id)
+        local = db.Database(id)
+        display = screen.Display(id)
 
         while True:
             self.calibrate_adc(attenuation = machine.ADC.ATTN_6DB, bit_width = machine.ADC.WIDTH_12BIT)
             self.update_time()
-            log.send({"hour": self.current_hour, "minute": self.current_minute, "water level": self.measure_water_level()})
+
+            data = {"year": self.current_year, 
+                    "month": self.current_month, 
+                    "day": self.current_day,
+                    "hour": self.current_hour, 
+                    "minute": self.current_minute, 
+                    "water level": self.measure_water_level()}
+
+            try:
+                log.send(data)
+                amount_to_keep_locally = 5
+            except:
+                amount_to_keep_locally = 10
+
+            local.save_data(data, amount_to_keep_locally)
+
+            display.refresh()
+
             await uasyncio.sleep(update_interval)

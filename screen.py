@@ -2,7 +2,7 @@ import uasyncio
 import machine
 import framebuf
 import db
-from logo_bitmap import gear
+import logo_bitmap
 from debug import log
 debug = True
 
@@ -35,6 +35,7 @@ class Display():
         #self.screen_buffer = gear #self.screen_buffer | gear
         self.display.vline(64, 0, 32, 0xffff)
         self.display.hline(0, 32, 128, 0xffff)
+        self.display.vline(95, 32, 32, 0xffff)
         """ print("MEMORY SCREEN")
         print(self.screen_buffer)
         f = open("screen_buffer.txt", 'wb')
@@ -64,7 +65,7 @@ class Display():
             uasyncio.sleep_ms(10)
         self.refreshing = True
 
-        data_full = self.local_db.load_data()
+        data_full = self.local_db.load_data_all()
         
         log("-----------------Screen-----------------", debug)
         log("DEVICE ID: {0} | DEVICE DATA: {1} | DATA LENGTH: {2}".format(self.id, data_full[self.id][-1] if len(data_full[self.id]) > 0 else "no data", len(data_full[self.id])), debug)
@@ -93,7 +94,7 @@ class Display():
         try:
             data = data_full["ec"][-1]
             self.display.fill_rect(right_side, line_number[1], 64, 8, 0x0000)
-            self.display.text("Temp:{0}".format(round(data["temperature"])), right_side, line_number[1], 1)
+            self.display.text("TEMP:{0}".format(round(data["temperature"])), right_side, line_number[1], 1)
         except:
             pass
         try:
@@ -105,7 +106,7 @@ class Display():
         try:
             data = data_full["air"][-1]
             self.display.fill_rect(right_side, line_number[2], 64, 8, 0x0000)
-            self.display.text("Humid:{0}".format(data["air humidity"]), right_side, line_number[2], 1)
+            self.display.text("HUMD:{0}".format(data["air humidity"]), right_side, line_number[2], 1)
         except:
             pass
         try:
@@ -122,25 +123,25 @@ class Display():
             pass
         try:
             data = data_full["light"][-1]
-            self.display.fill_rect(left_side, line_number[4], 96, 8, 0x0000)
-            self.display.text("{0}|{1}|{2}".format(round(data["rgb"][0]),round(data["rgb"][1]),round(data["rgb"][2])), left_side, line_number[4], 1)
+            self.display.fill_rect(left_side, line_number[4], 94, 8, 0x0000)
+            self.display.text("r{0}g{1}b{2}".format(round(data["rgb"][0]),round(data["rgb"][1]),round(data["rgb"][2])), left_side, line_number[4], 1)
         except:
             pass
         try:
             data = data_full["water_pipe"][-1]
-            self.display.fill_rect(left_side, line_number[5], 96, 8, 0x0000)
-            self.display.text("W.lvl:{0}".format(round(data["water level"])), left_side, line_number[5], 1)
+            self.display.fill_rect(left_side, line_number[5], 94, 8, 0x0000)
+            self.display.text("W.level {0}".format(round(data["water level"])), left_side, line_number[5], 1)
         except:
             pass
         try:
             data = data_full["power"][-1]
-            self.display.fill_rect(left_side, line_number[6], 96, 8, 0x0000)
-            self.display.text("Power:{0}w".format(round(data["consumption"])), left_side, line_number[6], 1)
+            self.display.fill_rect(left_side, line_number[6], 94, 8, 0x0000)
+            self.display.text("Power {0} w".format(round(data["consumption"])), left_side, line_number[6], 1)
         except:
             pass
         try:
             data = data_full["pump"][-1]
-            self.display.fill_rect(left_side, line_number[7], 96, 8, 0x0000)
+            self.display.fill_rect(left_side, line_number[7], 94, 8, 0x0000)
             self.display.text("Pump {0} {1}".format(data["status"], data["minute"]), left_side, line_number[7], 1)
         except:
             pass
@@ -155,11 +156,12 @@ class Display():
         difference_in_second_buffer = self.bytearray_bitwise_difference(byte_array_from_buffer, self.screen_buffer)
         combined_buffer = self.bytearray_bitwise_or(difference_in_first_buffer, difference_in_second_buffer)
         """
+        geared_buffer = self.bytearray_bitwise_or(self.screen_buffer, logo_bitmap.turn_the_gear()) #gear_vlsb)
 
         for row in range(self.screen_rows):
             self.i2c.writeto(self.sh1106_address, bytes([self.set_command, self.rows_register | row]))
             self.i2c.writeto(self.sh1106_address, bytes([self.set_command, self.column_low_register | 0b00000010]))
             self.i2c.writeto(self.sh1106_address, bytes([self.set_command, self.column_high_register | 0b00000000]))
-            self.i2c.writeto(self.sh1106_address, bytes([self.data_command]) + self.screen_buffer[(self.screen_width * row) : (self.screen_width * row + self.screen_width)])
+            self.i2c.writeto(self.sh1106_address, bytes([self.data_command]) + geared_buffer[(self.screen_width * row) : (self.screen_width * row + self.screen_width)])
         
         self.refreshing = False

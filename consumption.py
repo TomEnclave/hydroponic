@@ -1,12 +1,13 @@
-import timer
+import machine
 import uasyncio
+import timer
 import cloud
+import db
+import screen
 from debug import log
 debug = True
 
 class Consumption(timer.Automation):
-      
-    import machine
     
     def __init__(self, consumption_pin = machine.ADC(machine.Pin(33), measured_device_voltage = 12, acs712_amps = 20)):
         super().__init__()
@@ -78,12 +79,32 @@ class Consumption(timer.Automation):
         return device_consumption
         
     async def start_log(self, update_interval=60):
-        import machine
+        
+        id = 'power'
 
-        log = cloud.Iot("power_meter")
+        log = cloud.Iot(id)
+        local = db.Database(id)
+        display = screen.Display(id)
 
         while True:
             self.calibrate_adc(attenuation = machine.ADC.ATTN_11DB, bit_width = machine.ADC.WIDTH_12BIT)
             self.update_time()
-            log.send({"hour": self.current_hour, "minute": self.current_minute, "power consumption": self.measure_consumption()})
+
+            data = {"year": self.current_year, 
+                    "month": self.current_month, 
+                    "day": self.current_day,
+                    "hour": self.current_hour, 
+                    "minute": self.current_minute, 
+                    "consumption": self.measure_consumption()}
+
+            try:
+                log.send(data)
+                amount_to_keep_locally = 5
+            except:
+                amount_to_keep_locally = 50
+
+            local.save_data(data, amount_to_keep_locally)
+
+            display.refresh()
+
             await uasyncio.sleep(update_interval)
